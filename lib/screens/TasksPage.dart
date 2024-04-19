@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
-import 'data_model.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:uuid/uuid.dart';
+import '../entities/Task.dart';
+import '../entities/Catagory.dart';
+
 
 class CategoryDetailsPage extends StatefulWidget {
   final Category category;
+  final Map<String, List<Task>> tasksByCategory;
 
-  CategoryDetailsPage(this.category);
+  CategoryDetailsPage({required this.category, required this.tasksByCategory});
 
   @override
-  _CategoryDetailsPageState createState() => _CategoryDetailsPageState();
+  _CategoryDetailsPageState createState() => _CategoryDetailsPageState(tasksByCategory: tasksByCategory);
 }
 
 class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
-  String filter = 'Все'; // По умолчанию показываем все задачи
+  String filter = 'Все';
+  final Map<String, List<Task>> tasksByCategory;
+
+  _CategoryDetailsPageState({required this.tasksByCategory});
 
   void _filterTasks(String newFilter) {
     setState(() {
@@ -23,6 +29,36 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
   @override
   void initState() {
     super.initState();
+  }
+
+  void deleteTask(String categoryId, String taskId) {
+    tasksByCategory[categoryId]?.removeWhere((task) => task.id == taskId);
+  }
+
+  void addTaskToCategory(String categoryId, String taskTitle) {
+    Task newTask = Task(
+      id: Uuid().v4(),
+      title: taskTitle,
+      description: '',
+      isCompleted: false,
+      isFavourite: false,
+      createdAt: DateTime.now(),
+      categoryId: categoryId,
+    );
+
+    setState(() {
+      tasksByCategory[categoryId]?.add(newTask);
+    });
+  }
+
+  void updateTask(Task task, String newTitle, String newDescription, bool newIsCompleted, bool newIsFavourite) {
+    Task? updatedTask = tasksByCategory[task.categoryId]?.firstWhere((t) => t.id == task.id);
+    if (updatedTask != null) {
+      updatedTask.title = newTitle;
+      updatedTask.description = newDescription;
+      updatedTask.isCompleted = newIsCompleted;
+      updatedTask.isFavourite = newIsFavourite;
+    }
   }
 
   void _showEditTaskDialog(Task task) {
@@ -53,18 +89,6 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
                 controller: TextEditingController(text: task.description),
                 decoration: const InputDecoration(labelText: 'Новое описание:'),
               ),
-              Checkbox(
-                value: updatedIsCompleted,
-                onChanged: (value) {
-                  updatedIsCompleted = value ?? false;
-                },
-              ),
-              Checkbox(
-                value: updatedIsFavourite,
-                onChanged: (value) {
-                  updatedIsFavourite = value ?? false;
-                },
-              ),
             ],
           ),
           actions: <Widget>[
@@ -78,7 +102,7 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
               child: const Text('Сохранить'),
               onPressed: () {
                 if (updatedTitle.isNotEmpty) {
-                  dataModel.updateTask(task, updatedTitle, updatedDescription,
+                  updateTask(task, updatedTitle, updatedDescription,
                       updatedIsCompleted, updatedIsFavourite);
                   Navigator.of(context).pop();
                   setState(() {});
@@ -108,7 +132,7 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
             TextButton(
               child: const Text('Удалить'),
               onPressed: () {
-                dataModel.deleteTask(task.categoryId, task.id);
+                deleteTask(task.categoryId, task.id);
                 Navigator.of(context).pop();
                 setState(() {});
               },
@@ -143,9 +167,9 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
               child: const Text('Сохранить'),
               onPressed: () {
                 if (taskTitle.trim().isNotEmpty) {
-                  dataModel.addTaskToCategory(widget.category.id, taskTitle);
+                  addTaskToCategory(widget.category.id, taskTitle);
                 } else {
-                  dataModel.addTaskToCategory(
+                  addTaskToCategory(
                       widget.category.id, 'Новая задача');
                 }
                 setState(() {});
@@ -161,7 +185,7 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
   @override
   Widget build(BuildContext context) {
     List<Task> tasks =
-        List<Task>.from(dataModel.tasksByCategory[widget.category.id] ?? []);
+    List<Task>.from(tasksByCategory[widget.category.id] ?? []);
 
     if (filter == 'Выполненные') {
       tasks = tasks.where((task) => task.isCompleted).toList();
@@ -219,25 +243,32 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
               itemCount: tasks.length,
               itemBuilder: (context, index) {
                 final Task task = tasks[index];
-                return Slidable(
-                  actionPane: SlidableDrawerActionPane(),
-                  actionExtentRatio: 0.25,
-                  actions: <Widget>[
-                    IconSlideAction(
-                      caption: 'Редактировать',
-                      color: Colors.yellow,
-                      icon: Icons.edit,
-                      onTap: () => _showEditTaskDialog(task),
-                    )
-                  ],
-                  secondaryActions: <Widget>[
-                    IconSlideAction(
-                      caption: 'Удалить',
-                      color: Colors.red,
-                      icon: Icons.delete,
-                      onTap: () => _deleteTask(task),
-                    )
-                  ],
+                return Dismissible(
+                  key: Key(task.id),
+                  confirmDismiss: (direction) async {
+                    if (direction == DismissDirection.startToEnd) {
+                      _showEditTaskDialog(task);
+                      return false;
+                    }
+                    if (direction == DismissDirection.endToStart) {
+                      _deleteTask(task);
+                      return false;
+                    }
+                    return true;
+                  },
+                  background: Container(
+                    color: Colors.yellow,
+                    alignment: Alignment.centerLeft,
+                    padding: EdgeInsets.only(left: 20.0),
+                    child: Icon(Icons.edit, color: Colors.white),
+                  ),
+                  secondaryBackground: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: EdgeInsets.only(right: 20.0),
+                    child: Icon(Icons.delete, color: Colors.white),
+                  ),
+                  direction: DismissDirection.horizontal,
                   child: ListTile(
                     leading: Checkbox(
                       value: task.isCompleted,
@@ -267,7 +298,7 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
                           child: Icon(
                             task.isFavourite ? Icons.star : Icons.star_border,
                             color:
-                                task.isFavourite ? Colors.amber : Colors.grey,
+                            task.isFavourite ? Colors.amber : Colors.grey,
                           ),
                         ),
                       ],
