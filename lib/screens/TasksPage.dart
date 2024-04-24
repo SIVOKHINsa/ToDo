@@ -3,6 +3,12 @@ import 'package:uuid/uuid.dart';
 import '../entities/Task.dart';
 import '../entities/Catagory.dart';
 
+enum Filter {
+  all,
+  completed,
+  notCompleted,
+  favourite,
+}
 
 class CategoryDetailsPage extends StatefulWidget {
   final Category category;
@@ -15,12 +21,13 @@ class CategoryDetailsPage extends StatefulWidget {
 }
 
 class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
-  String filter = 'Все';
+  Filter filter = Filter.all;
+
   final Map<String, List<Task>> tasksByCategory;
 
   _CategoryDetailsPageState({required this.tasksByCategory});
 
-  void _filterTasks(String newFilter) {
+  void _filterTasks(Filter newFilter) {
     setState(() {
       filter = newFilter;
     });
@@ -40,8 +47,6 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
       id: Uuid().v4(),
       title: taskTitle,
       description: '',
-      isCompleted: false,
-      isFavourite: false,
       createdAt: DateTime.now(),
       categoryId: categoryId,
     );
@@ -187,14 +192,13 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
     List<Task> tasks =
     List<Task>.from(tasksByCategory[widget.category.id] ?? []);
 
-    if (filter == 'Выполненные') {
+    if (filter == Filter.completed) {
       tasks = tasks.where((task) => task.isCompleted).toList();
-    } else if (filter == 'Не выполненные') {
+    } else if (filter == Filter.notCompleted) {
       tasks = tasks.where((task) => !task.isCompleted).toList();
-    } else if (filter == 'Избранные') {
+    } else if (filter == Filter.favourite) {
       tasks = tasks.where((task) => task.isFavourite).toList();
     }
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -210,15 +214,14 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
           },
         ),
         actions: <Widget>[
-          PopupMenuButton<String>(
+          PopupMenuButton<Filter>(
             icon: const Icon(Icons.menu, color: Colors.white),
             onSelected: _filterTasks,
             itemBuilder: (BuildContext context) {
-              return ['Все', 'Выполненные', 'Не выполненные', 'Избранные']
-                  .map((String value) {
-                return PopupMenuItem<String>(
+              return Filter.values.map((Filter value) {
+                return PopupMenuItem<Filter>(
                   value: value,
-                  child: Text(value),
+                  child: Text(_getFilterText(value)),
                 );
               }).toList();
             },
@@ -317,5 +320,19 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
         child: const Icon(Icons.add),
       ),
     );
+  }
+  String _getFilterText(Filter filter) {
+    switch(filter) {
+      case Filter.all:
+        return 'Все';
+      case Filter.completed:
+        return 'Выполненные';
+      case Filter.notCompleted:
+        return 'Не выполненные';
+      case Filter.favourite:
+        return 'Избранные';
+      default:
+        return '';
+    }
   }
 }
