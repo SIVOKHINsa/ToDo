@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../entities/Task.dart';
 import '../entities/Catagory.dart';
+import 'TasksDetailsPage.dart';
 
 enum Filter {
   all,
@@ -37,6 +38,7 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
   void initState() {
     super.initState();
   }
+
 
   void deleteTask(String categoryId, String taskId) {
     tasksByCategory[categoryId]?.removeWhere((task) => task.id == taskId);
@@ -87,13 +89,6 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
                 controller: TextEditingController(text: task.title),
                 decoration: const InputDecoration(labelText: 'Новое название:'),
               ),
-              TextField(
-                onChanged: (value) {
-                  updatedDescription = value;
-                },
-                controller: TextEditingController(text: task.description),
-                decoration: const InputDecoration(labelText: 'Новое описание:'),
-              ),
             ],
           ),
           actions: <Widget>[
@@ -120,6 +115,27 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
     );
   }
 
+  void updateCategoryTasks(String categoryId, List<Task> updatedTasks) {
+    setState(() {
+      tasksByCategory[categoryId] = updatedTasks;
+    });
+  }
+
+  void _onTaskSelected(Task task) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TaskDetailsPage(
+          task: task,
+          onDeleteTask: deleteTask,
+          onUpdateTask: updateCategoryTasks,
+          taskList: tasksByCategory[widget.category.id] ?? [],// Pass updateCategoryTasks function
+        ),
+      ),
+    ).then((_) {
+      setState(() {});
+    });
+  }
   void _deleteTask(Task task) {
     showDialog(
       context: context,
@@ -273,6 +289,9 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
                   ),
                   direction: DismissDirection.horizontal,
                   child: ListTile(
+                    onTap: () {
+                      _onTaskSelected(task);
+                    },
                     leading: Checkbox(
                       value: task.isCompleted,
                       onChanged: (value) {
@@ -287,9 +306,7 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
                         Text(
                           task.title,
                           style: TextStyle(
-                            decoration: task.isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
+                            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
                           ),
                         ),
                         GestureDetector(
@@ -300,8 +317,7 @@ class _CategoryDetailsPageState extends State<CategoryDetailsPage> {
                           },
                           child: Icon(
                             task.isFavourite ? Icons.star : Icons.star_border,
-                            color:
-                            task.isFavourite ? Colors.amber : Colors.grey,
+                            color: task.isFavourite ? Colors.amber : Colors.grey,
                           ),
                         ),
                       ],
