@@ -1,0 +1,1 @@
+enum FilterStatus { all, completed, uncompleted, favourite }

@@ -1,7 +1,7 @@
 class Category {
-  String id;
-  String name;
-  DateTime createdAt;
+  final String id;
+  final String name;
+  final DateTime createdAt;
 
   Category({
     required this.id,
