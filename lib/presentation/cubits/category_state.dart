@@ -1,7 +1,19 @@
 import 'package:equatable/equatable.dart';
 import 'package:todo/domain/entities/category.dart';
 
-enum CategoryStatus { initial, loading, loaded, error }
+class CategoryStatus extends Equatable {
+  final String value;
+
+  const CategoryStatus._(this.value);
+
+  static const CategoryStatus initial = CategoryStatus._('initial');
+  static const CategoryStatus loading = CategoryStatus._('loading');
+  static const CategoryStatus loaded = CategoryStatus._('loaded');
+  static const CategoryStatus error = CategoryStatus._('error');
+
+  @override
+  List<Object?> get props => [value];
+}
 
 class CategoryState extends Equatable {
   final CategoryStatus status;
