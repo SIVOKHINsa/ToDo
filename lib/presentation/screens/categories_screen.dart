@@ -18,36 +18,37 @@ class CategoriesScreen extends StatelessWidget {
       ),
       body: BlocBuilder<CategoryCubit, CategoryState>(
         builder: (context, state) {
-          if (state.status == CategoryStatus.loading) {
+          if (state is LoadingCategoryState) {
             return const Center(child: CircularProgressIndicator());
-          } else if (state.status == CategoryStatus.loaded) {
-            return state.categories.isNotEmpty
+          } else if (state is LoadedCategoryState) {
+            final categories = state.categories;
+            return categories.isNotEmpty
                 ? ListView.builder(
-                    itemCount: state.categories.length,
-                    itemBuilder: (context, index) {
-                      final category = state.categories[index];
-                      return CategoryCard(
-                        category: category,
-                        onDismissed: () {
-                          context
-                              .read<CategoryCubit>()
-                              .deleteCategoryById(category.id);
-                        },
-                        onEdit: (newName) {
-                          final updatedCategory = Category(
-                            id: category.id,
-                            name: newName,
-                            createdAt: category.createdAt,
-                          );
-                          context
-                              .read<CategoryCubit>()
-                              .modifyCategory(updatedCategory);
-                        },
-                      );
-                    },
-                  )
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return CategoryCard(
+                  category: category,
+                  onDismissed: () {
+                    context
+                        .read<CategoryCubit>()
+                        .deleteCategoryById(category.id);
+                  },
+                  onEdit: (newName) {
+                    final updatedCategory = Category(
+                      id: category.id,
+                      name: newName,
+                      createdAt: category.createdAt,
+                    );
+                    context
+                        .read<CategoryCubit>()
+                        .modifyCategory(updatedCategory);
+                  },
+                );
+              },
+            )
                 : const Center(child: Text('Список категорий пуст'));
-          } else if (state.status == CategoryStatus.error) {
+          } else if (state is ErrorCategoryState) {
             return Center(child: Text(state.message));
           } else {
             return const Center(child: Text('Неизвестная ошибка'));

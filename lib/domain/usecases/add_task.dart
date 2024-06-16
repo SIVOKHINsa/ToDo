@@ -5,10 +5,10 @@ import 'package:todo/domain/usecases/usecase.dart';
 
 import '../../core/error/failures.dart';
 
-class AddTask extends UseCase<void, task_entity.Task> {
+class AddTask implements UseCase<void, task_entity.Task> {
   final TaskRepository repository;
 
-  AddTask(this.repository);
+  const AddTask(this.repository);
 
   @override
   Future<Either<Failure, void>> call(task_entity.Task task) async {

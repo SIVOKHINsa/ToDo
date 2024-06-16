@@ -5,10 +5,11 @@ import 'package:todo/domain/usecases/usecase.dart';
 
 import '../../core/error/failures.dart';
 
-class AddCategory extends UseCase<void, Category> {
+class AddCategory implements UseCase<void, Category> {
   final CategoryRepository repository;
 
-  AddCategory(this.repository);
+  const AddCategory(this.repository);
+
   @override
   Future<Either<Failure, void>> call(Category category) async {
     try {

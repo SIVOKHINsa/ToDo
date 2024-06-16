@@ -19,21 +19,21 @@ class CategoryCubit extends Cubit<CategoryState> {
     required this.addCategory,
     required this.deleteCategory,
     required this.updateCategory,
-  }) : super(CategoryState.initial());
+  }) : super(InitialCategoryState());
 
   void loadCategories() async {
-    emit(CategoryState.loading());
+    emit(LoadingCategoryState());
     final Either<Failure, List<Category>> result = await getCategories(NoParams());
     result.fold(
-          (failure) => emit(CategoryState.error(failure.message)),
-          (categories) => emit(CategoryState.loaded(categories)),
+          (failure) => emit(ErrorCategoryState(failure.message)),
+          (categories) => emit(LoadedCategoryState(categories)),
     );
   }
 
   void addNewCategory(Category category) async {
     final Either<Failure, void> result = await addCategory(category);
     result.fold(
-          (failure) => emit(CategoryState.error(failure.message)),
+          (failure) => emit(ErrorCategoryState(failure.message)),
           (_) => loadCategories(),
     );
   }
@@ -41,7 +41,7 @@ class CategoryCubit extends Cubit<CategoryState> {
   void deleteCategoryById(String id) async {
     final Either<Failure, void> result = await deleteCategory(id);
     result.fold(
-          (failure) => emit(CategoryState.error(failure.message)),
+          (failure) => emit(ErrorCategoryState(failure.message)),
           (_) => loadCategories(),
     );
   }
@@ -49,7 +49,7 @@ class CategoryCubit extends Cubit<CategoryState> {
   void modifyCategory(Category category) async {
     final Either<Failure, void> result = await updateCategory(category);
     result.fold(
-          (failure) => emit(CategoryState.error(failure.message)),
+          (failure) => emit(ErrorCategoryState(failure.message)),
           (_) => loadCategories(),
     );
   }

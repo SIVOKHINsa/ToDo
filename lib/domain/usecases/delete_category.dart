@@ -4,10 +4,10 @@ import 'package:todo/domain/usecases/usecase.dart';
 
 import '../../core/error/failures.dart';
 
-class DeleteCategory extends UseCase<void, String> {
+class DeleteCategory implements UseCase<void, String> {
   final CategoryRepository repository;
 
-  DeleteCategory(this.repository);
+  const DeleteCategory(this.repository);
 
   @override
   Future<Either<Failure, void>> call(String id) async {

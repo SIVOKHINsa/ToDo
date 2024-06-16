@@ -1,59 +1,47 @@
 import 'package:equatable/equatable.dart';
 import 'package:todo/domain/entities/category.dart';
 
-class CategoryStatus extends Equatable {
-  final String value;
 
-  const CategoryStatus._(this.value);
-
-  static const CategoryStatus initial = CategoryStatus._('initial');
-  static const CategoryStatus loading = CategoryStatus._('loading');
-  static const CategoryStatus loaded = CategoryStatus._('loaded');
-  static const CategoryStatus error = CategoryStatus._('error');
+abstract class CategoryState extends Equatable {
+  const CategoryState();
 
   @override
-  List<Object?> get props => [value];
+  List<Object?> get props => [];
 }
 
-class CategoryState extends Equatable {
-  final CategoryStatus status;
+
+class InitialCategoryState extends CategoryState {
+  const InitialCategoryState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+
+class LoadingCategoryState extends CategoryState {
+  const LoadingCategoryState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+
+class LoadedCategoryState extends CategoryState {
   final List<Category> categories;
+
+  const LoadedCategoryState(this.categories);
+
+  @override
+  List<Object?> get props => [categories];
+}
+
+
+class ErrorCategoryState extends CategoryState {
   final String message;
 
-  const CategoryState({
-    this.status = CategoryStatus.initial,
-    this.categories = const [],
-    this.message = '',
-  });
-
-  CategoryState copyWith({
-    CategoryStatus? status,
-    List<Category>? categories,
-    String? message,
-  }) {
-    return CategoryState(
-      status: status ?? this.status,
-      categories: categories ?? this.categories,
-      message: message ?? this.message,
-    );
-  }
-
-  static CategoryState initial() {
-    return const CategoryState(status: CategoryStatus.initial);
-  }
-
-  static CategoryState loading() {
-    return const CategoryState(status: CategoryStatus.loading);
-  }
-
-  static CategoryState loaded(List<Category> categories) {
-    return CategoryState(status: CategoryStatus.loaded, categories: categories);
-  }
-
-  static CategoryState error(String message) {
-    return CategoryState(status: CategoryStatus.error, message: message);
-  }
+  const ErrorCategoryState(this.message);
 
   @override
-  List<Object?> get props => [status, categories, message];
+  List<Object?> get props => [message];
 }
+
