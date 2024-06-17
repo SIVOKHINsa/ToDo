@@ -1,29 +1,44 @@
 import 'package:todo/domain/entities/category.dart';
 import 'package:todo/domain/repositories/category_repository.dart';
+import 'package:drift/drift.dart';
+import 'package:todo/data/database/db.dart' as db;
 
 class CategoryRepositoryImpl implements CategoryRepository {
-  final List<Category> _categories = [];
+  final db.AppDatabase database;
+  CategoryRepositoryImpl(this.database);
 
   @override
   Future<List<Category>> getCategories() async {
-    return _categories;
+    final categories = await database.getAllCategories();
+    return categories.map((e) => Category(
+      id: e.id,
+      name: e.name,
+      createdAt: e.createdAt,
+    )).toList();
   }
 
   @override
   Future<void> addCategory(Category category) async {
-    _categories.add(category);
+    final categoryCompanion = db.CategoriesCompanion(
+      id: Value(category.id),
+      name: Value(category.name),
+      createdAt: Value(category.createdAt),
+    );
+    await database.insertCategory(categoryCompanion);
   }
 
   @override
   Future<void> deleteCategory(String id) async {
-    _categories.removeWhere((category) => category.id == id);
+    await database.deleteCategory(id);
   }
 
   @override
   Future<void> updateCategory(Category category) async {
-    final index = _categories.indexWhere((c) => c.id == category.id);
-    if (index != -1) {
-      _categories[index] = category;
-    }
+    final categoryCompanion = db.CategoriesCompanion(
+      id: Value(category.id),
+      name: Value(category.name),
+      createdAt: Value(category.createdAt),
+    );
+    await database.updateCategory(categoryCompanion);
   }
 }

@@ -13,15 +13,17 @@ import 'package:todo/domain/usecases/update_category.dart';
 import 'package:todo/domain/usecases/update_task.dart';
 import 'package:todo/presentation/cubits/category_cubit.dart';
 import 'package:todo/presentation/cubits/task_cubit.dart';
+import 'package:todo/data/database/db.dart';
 
 final sl = GetIt.instance;
 
 void init() {
-  // Repositories
-  sl.registerLazySingleton<CategoryRepository>(() => CategoryRepositoryImpl());
-  sl.registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl());
+  sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
-  // UseCases
+  sl.registerLazySingleton<CategoryRepository>(() => CategoryRepositoryImpl(sl()));
+  sl.registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl(sl()));
+
+
   sl.registerLazySingleton(() => AddCategory(sl()));
   sl.registerLazySingleton(() => AddTask(sl()));
   sl.registerLazySingleton(() => DeleteCategory(sl()));
@@ -31,7 +33,6 @@ void init() {
   sl.registerLazySingleton(() => UpdateTask(sl()));
   sl.registerLazySingleton(() => UpdateCategory(sl()));
 
-  // Cubits
   sl.registerFactory(() => CategoryCubit(
     getCategories: sl(),
     addCategory: sl(),
