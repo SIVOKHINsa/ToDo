@@ -1,4 +1,6 @@
 import 'package:get_it/get_it.dart';
+import 'package:todo/data/datasources/category_datasource.dart';
+import 'package:todo/data/datasources/task_datasource.dart';
 import 'package:todo/data/repositories/category_repository_impl.dart';
 import 'package:todo/data/repositories/task_repository_impl.dart';
 import 'package:todo/domain/repositories/category_repository.dart';
@@ -19,6 +21,9 @@ final sl = GetIt.instance;
 
 void init() {
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
+
+  sl.registerLazySingleton<CategoryDataSource>(() => CategoryDataSource(sl<AppDatabase>()));
+  sl.registerLazySingleton<TaskDataSource>(() => TaskDataSource(sl<AppDatabase>()));
 
   sl.registerLazySingleton<CategoryRepository>(() => CategoryRepositoryImpl(sl()));
   sl.registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl(sl()));
