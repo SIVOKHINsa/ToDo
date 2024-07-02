@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:uuid/uuid.dart';
 import 'package:todo/domain/entities/task.dart';
 import 'package:todo/domain/entities/img.dart';
 import 'package:todo/presentation/widgets/delete_task_taskdetail_confirmation_dialog.dart';
+import 'package:todo/presentation/cubits/task_cubit.dart';
+import 'package:todo/presentation/cubits/task_state.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final Task task;
@@ -26,14 +26,12 @@ class TaskDetailScreen extends StatefulWidget {
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  List<String> _photoUrls = [];
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.task.title);
     _descriptionController = TextEditingController(text: widget.task.description);
-    _photoUrls.addAll(widget.task.imgUrls.map((img) => img.url));
   }
 
   @override
@@ -57,35 +55,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  Future<List<String>> _searchPhotosFromFlickr(String query) async {
-    String flickrApiKey = '550d14fe53023610649a0dbf839b498e';
-    String flickrBaseUrl = 'https://www.flickr.com/services/rest/';
-    String method = 'flickr.photos.search';
-
-    String url = '$flickrBaseUrl?method=$method&api_key=$flickrApiKey&text=$query&format=json&nojsoncallback=1';
-
-    try {
-      var response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        var data = json.decode(response.body);
-        var photos = data['photos']['photo'];
-        return photos.map<String>((photo) {
-          var farmId = photo['farm'];
-          var serverId = photo['server'];
-          var photoId = photo['id'];
-          var secret = photo['secret'];
-          return 'https://farm$farmId.staticflickr.com/$serverId/${photoId}_$secret.jpg';
-        }).toList();
-      } else {
-        print('Failed to search photos: ${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      print('Error searching photos: $e');
-      return [];
-    }
-  }
 
   void _showPhotoSelectionDialog(BuildContext context) {
     TextEditingController searchController = TextEditingController();
@@ -108,9 +77,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () async {
-                  List<String> photos = await _searchPhotosFromFlickr(searchController.text);
+                  await context.read<TaskCubit>().searchPhotosFromFlickr(searchController.text);
                   Navigator.of(context).pop();
-                  _showPhotoGridDialog(context, photos);
+                  _showPhotoGridDialog(context);
                 },
                 child: const Text('Поиск'),
               ),
@@ -121,59 +90,58 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  void _showPhotoGridDialog(BuildContext context, List<String> photos) {
+  void _showPhotoGridDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Выберите изображение'),
-        content: Container(
-          width: double.maxFinite,
-          child: photos.isNotEmpty
-              ? GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-            itemCount: photos.length,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _photoUrls.add(photos[index]);
-                  });
-                  Navigator.of(context).pop();
-                },
-                child: Image.network(photos[index], fit: BoxFit.cover),
+      builder: (context) {
+        return BlocBuilder<TaskCubit, TaskState>(
+          builder: (context, state) {
+            if (state is TaskLoading) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (state is TaskLoaded) {
+              return AlertDialog(
+                title: const Text('Выберите изображение'),
+                content: Container(
+                  width: double.maxFinite,
+                  child: state.photoUrls.isNotEmpty
+                      ? GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+                    itemCount: state.photoUrls.length,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () {
+                          context.read<TaskCubit>().removePhoto(index);
+                          Navigator.of(context).pop();
+                        },
+                        child: Image.network(state.photoUrls[index]),
+                      );
+                    },
+                  )
+                      : const Text('Изображений не найдено.'),
+                ),
               );
-            },
-          )
-              : const Center(child: Text('Нет изображений')),
-        ),
-      ),
+            } else if (state is TaskError) {
+              return AlertDialog(
+                title: const Text('Ошибка'),
+                content: Text(state.message),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('Закрыть'),
+                  ),
+                ],
+              );
+            } else {
+              return const SizedBox.shrink();
+            }
+          },
+        );
+      },
     );
   }
 
-  void _removePhoto(int index) {
-    setState(() {
-      _photoUrls.removeAt(index);
-    });
-  }
-
-  void _saveChanges() {
-    List<Img> updatedImgUrls = _photoUrls.map((url) =>
-        Img(id: const Uuid().v4(),
-            url: url,
-            taskId: widget.task.id)
-    ).toList();
-    Task updatedTask = Task(
-      id: widget.task.id,
-      title: _titleController.text,
-      description: _descriptionController.text,
-      isCompleted: widget.task.isCompleted,
-      isFavourite: widget.task.isFavourite,
-      categoryId: widget.task.categoryId,
-      createdAt: widget.task.createdAt,
-      imgUrls: updatedImgUrls,
-    );
-    widget.onUpdate(updatedTask);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +177,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           IconButton(
             icon: const Icon(Icons.save, color: Colors.white),
             onPressed: () {
-              _saveChanges();
+              context.read<TaskCubit>().saveChanges(widget.task);
             },
           ),
         ],
@@ -274,18 +242,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   const SizedBox(height: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _photoUrls.isNotEmpty
-                        ? _photoUrls.map((url) {
+                    children: widget.task.imgUrls.isNotEmpty
+                        ? widget.task.imgUrls.map((url) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: Stack(
                           children: [
-                            Image.network(url, width: double.infinity, height: 200, fit: BoxFit.cover),
+                            Image.network(url as String, width: double.infinity, height: 200, fit: BoxFit.cover),
                             Positioned(
                               right: 8,
                               top: 8,
                               child: GestureDetector(
-                                onTap: () => _removePhoto(_photoUrls.indexOf(url)),
+                                onTap: () => context.read<TaskCubit>().removePhoto(widget.task.imgUrls.indexOf(url)),
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
                                   color: Colors.red,
