@@ -8,12 +8,24 @@ import 'task_db.dart';
 
 part 'db.g.dart';
 
-@DriftDatabase(tables: [Categories, Tasks])
+@DriftDatabase(tables: [Categories, Tasks, Imgs])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (Migrator m) async {
+      await m.createAll();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from == 1) {
+        await m.createTable(imgs);
+      }
+    },
+  );
 
   Future<List<Category>> getAllCategories() => select(categories).get();
   Future<void> insertCategory(CategoriesCompanion category) => into(categories).insert(category);
@@ -25,6 +37,14 @@ class AppDatabase extends _$AppDatabase {
   Future<void> insertTask(TasksCompanion task) => into(tasks).insert(task);
   Future<void> updateTask(TasksCompanion task) => update(tasks).replace(task);
   Future<void> deleteTask(String id) => (delete(tasks)..where((t) => t.id.equals(id))).go();
+
+
+  Future<List<Img>> getImgsByTaskId(String taskId) async {
+    return await (select(imgs)..where((i) => i.taskId.equals(taskId))).get();
+  }
+  Future<void> insertImg(ImgsCompanion img) => into(imgs).insert(img);
+  Future<void> deleteImgsByTaskId(String taskId) =>
+      (delete(imgs)..where((i) => i.taskId.equals(taskId))).go();
 }
 
 LazyDatabase _openConnection() {
