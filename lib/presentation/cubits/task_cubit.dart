@@ -4,13 +4,12 @@ import 'package:todo/domain/usecases/add_task.dart';
 import 'package:todo/domain/usecases/delete_task.dart';
 import 'package:todo/domain/usecases/get_tasks.dart';
 import 'package:todo/domain/usecases/update_task.dart';
+import 'package:todo/domain/usecases/fetch_photo.dart';
 import 'package:todo/core/error/failures.dart';
 import 'package:todo/domain/entities/task.dart' as task_entity;
 import 'task_state.dart';
 import 'package:todo/domain/entities/img.dart';
-import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
-import 'dart:convert';
 import 'package:todo/resources.dart';
 
 class TaskCubit extends Cubit<TaskState> {
@@ -18,13 +17,15 @@ class TaskCubit extends Cubit<TaskState> {
   final AddTask addTask;
   final UpdateTask updateTask;
   final DeleteTask deleteTask;
+  final FetchPhotos fetchPhotos;
 
-  TaskCubit({
-    required this.getTasks,
-    required this.addTask,
-    required this.updateTask,
-    required this.deleteTask,
-  }) : super(TaskInitial());
+  TaskCubit(
+      {required this.getTasks,
+      required this.addTask,
+      required this.updateTask,
+      required this.deleteTask,
+      required this.fetchPhotos})
+      : super(TaskInitial());
 
   void loadTasks(String categoryId) async {
     emit(TaskLoading());
@@ -85,47 +86,32 @@ class TaskCubit extends Cubit<TaskState> {
     emit(TaskLoading());
     String url = buildFlickrSearchUrl(query);
 
-    try {
-      var response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        var data = json.decode(response.body);
-        var photos = data['photos']['photo'];
-        List<String> photoUrls = photos.map<String>((photo) {
-          var farmId = photo['farm'];
-          var serverId = photo['server'];
-          var photoId = photo['id'];
-          var secret = photo['secret'];
-          return 'https://farm$farmId.staticflickr.com/$serverId/${photoId}_$secret.jpg';
-        }).toList();
-        if (state is TaskLoaded) {
-          emit(TaskLoaded((state as TaskLoaded).tasks, photoUrls));
-        } else {
-          emit(TaskLoaded([], photoUrls));
-        }
-      } else {
-        emit(TaskError('Failed to search photos: ${response.statusCode}'));
-      }
-    } catch (e) {
-      emit(TaskError('Error searching photos: $e'));
-    }
+    final Either<Failure, List<String>> result = await fetchPhotos(url);
+    result.fold(
+      (failure) => emit(TaskError(failure.toString())),
+      (photoUrls) {
+        final currentState = state as TaskLoaded;
+        emit(TaskLoaded(currentState.tasks, photoUrls));
+      },
+    );
   }
 
   void removePhoto(int index) {
     if (state is TaskLoaded) {
-      List<String> updatedPhotoUrls = List.from((state as TaskLoaded).photoUrls)..removeAt(index);
+      List<String> updatedPhotoUrls = List.from((state as TaskLoaded).photoUrls)
+        ..removeAt(index);
       emit(TaskLoaded((state as TaskLoaded).tasks, updatedPhotoUrls));
     }
   }
 
   void saveChanges(task_entity.Task task) {
     if (state is TaskLoaded) {
-      List<Img> updatedImgUrls = (state as TaskLoaded).photoUrls.map((url) =>
-          Img(id: const Uuid().v4(), url: url, taskId: task.id)
-      ).toList();
+      List<Img> updatedImgUrls = (state as TaskLoaded)
+          .photoUrls
+          .map((url) => Img(id: const Uuid().v4(), url: url, taskId: task.id))
+          .toList();
       task.imgUrls = updatedImgUrls;
       modifyTask(task);
     }
   }
-
 }
