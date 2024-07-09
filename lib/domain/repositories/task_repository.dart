@@ -5,4 +5,5 @@ abstract class TaskRepository {
   Future<void> addTask(Task task);
   Future<void> deleteTask(String id);
   Future<void> updateTask(Task task);
+  Future<List<String>> fetchPhotos(String url);
 }
